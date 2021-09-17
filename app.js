@@ -24,5 +24,5 @@ app.use(user);
 app.use(card);
 
 app.listen(port, () => {
-  console.log('app listening port');
+  console.log(`app listening port is running on port ${port}`);
 });

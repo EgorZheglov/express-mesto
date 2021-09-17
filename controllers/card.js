@@ -4,7 +4,8 @@ const Card = require('../models/card');
 const getAllCards = (req, res) => Card.find({}).then((cards) => res.status(200).send(cards));
 
 const deleteCard = (req, res) => Card.findOneAndRemove(req.params)
-  .then((card) => res.status(200).send(card));
+  .then((card) => res.status(200).send(card))
+  .catch(err => res.status(500).send({ message: 'Произошла ошибка' }));
 
 const createCard = (req, res) => {
   const { name, link } = req.body;
