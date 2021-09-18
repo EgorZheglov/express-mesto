@@ -4,11 +4,20 @@ const User = require('../models/user');
 const updateAvatar = (req, res) => User.findByIdAndUpdate(
   req.user.id,
   { ...req.body },
-  { new: true },
-).then((user) => res.status(200).send(user))
+  {
+    new: true,
+    runValidators: true,
+  },
+).then((user) => {
+  if (!user) {
+    res.status(404).send({ message: 'Данные не найдены' });
+    return;
+  }
+  res.status(200).send(user);
+})
   .catch((err) => {
-    if (err.name === 'CastError') {
-      res.status(404).send({ message: 'Данные не найдены' });
+    if (err.name === 'ValidationError') {
+      res.status(400).send({ message: 'данные не прошли валидацию' });
     } else {
       res.status(500).send({ message: 'Произошла ошибка' });
     }
@@ -17,9 +26,24 @@ const updateAvatar = (req, res) => User.findByIdAndUpdate(
 const updateUser = (req, res) => User.findByIdAndUpdate(
   req.user.id,
   { ...req.body },
-  { new: true },
-).then((user) => res.status(200).send(user))
-  .catch(() => res.status(500).send({ message: 'Произошла ошибка' }));
+  {
+    new: true,
+    runValidators: true,
+  },
+).then((user) => {
+  if (!user) {
+    res.status(404).send({ message: 'Данные не найдены' });
+  } else {
+    res.status(200).send(user);
+  }
+})
+  .catch((err) => {
+    if (err.name === 'ValidationError') {
+      res.status(400).send({ message: 'данные не прошли валидацию' });
+    } else {
+      res.status(500).send({ message: 'Произошла ошибка' });
+    }
+  });
 
 const getAllUsers = (req, res) => User.find({}).then((users) => res.status(200).send(users))
   .catch(() => res.status(500).send({ message: 'Произошла ошибка' }));
@@ -27,14 +51,15 @@ const getAllUsers = (req, res) => User.find({}).then((users) => res.status(200).
 const getUser = (req, res) => {
   const { id } = req.params;
 
-  return User.findById(id).then((user) => res.status(200).send(user))
-    .catch((err) => {
-      if (err.name === 'CastError') {
+  return User.findById(id)
+    .then((user) => {
+      if (!user) {
         res.status(404).send({ message: 'Данные не найдены' });
       } else {
-        res.status(500).send({ message: 'Произошла ошибка' });
+        res.status(200).send(user);
       }
-    });
+    })
+    .catch(() => res.status(500).send({ message: 'Произошла ошибка' }));
 };
 
 const createUser = (req, res) => User.create(req.body).then((user) => res.status(200).send(user))

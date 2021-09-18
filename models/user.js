@@ -1,5 +1,6 @@
+/* eslint-disable linebreak-style */
 /* eslint-disable comma-dangle */
-/* eslint linebreak-style: ["error", "windows"] */
+
 const mongoose = require('mongoose');
 
 const userSchema = mongoose.Schema({

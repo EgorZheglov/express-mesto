@@ -1,5 +1,5 @@
-/* eslint-disable comma-dangle */
-/* eslint linebreak-style: ["error", "windows"] */
+/* eslint-disable linebreak-style */
+
 const mongoose = require('mongoose');
 
 const cardSchema = mongoose.Schema({
