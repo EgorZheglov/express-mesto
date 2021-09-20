@@ -11,9 +11,9 @@ const updateAvatar = (req, res) => User.findByIdAndUpdate(
 ).then((user) => {
   if (!user) {
     res.status(404).send({ message: 'Данные не найдены' });
-    return;
+  } else {
+    res.status(200).send(user);
   }
-  res.status(200).send(user);
 })
   .catch((err) => {
     if (err.name === 'ValidationError') {
@@ -59,7 +59,13 @@ const getUser = (req, res) => {
         res.status(200).send(user);
       }
     })
-    .catch(() => res.status(500).send({ message: 'Произошла ошибка' }));
+    .catch((err) => {
+      if (err.name === 'CastError') {
+        res.status(400).send({ message: 'Введены некорректные данные' });
+      } else {
+        res.status(500).send({ message: 'Произошла ошибка' });
+      }
+    });
 };
 
 const createUser = (req, res) => User.create(req.body).then((user) => res.status(200).send(user))
