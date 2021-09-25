@@ -1,5 +1,62 @@
 /* eslint-disable linebreak-style */
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
 const User = require('../models/user');
+
+const login = (req, res) => {
+  const { email, password } = req.body;
+
+  console.log(req.body);
+  User.findOne({ email }).select('+password')
+    .then((user) => {
+      if (!user) {
+        return Promise.reject(new Error('Неправильные почта или пароль'));
+      }
+
+      return bcrypt.compare(password, user.password)
+        .then((matched) => {
+          if (!matched) {
+            // хеши не совпали — отклоняем промис
+            return Promise.reject(new Error('Неправильные почта или пароль'));
+          }
+
+          const token = jwt.sign(
+            { _id: user.id },
+            'secret',
+            { expiresIn: '7d' },
+          );
+
+          // аутентификация успешна
+          return res.status(200).send({ token });
+        })
+        .catch((err) => {
+          res
+            .status(401)
+            .send({ message: err.message });
+        });
+      // Захешируем его и сравним с хешем в базе. bcrypt.compare - асинхронный.
+    });
+};
+
+const createUser = (req, res) => {
+  bcrypt.hash(req.body.password, 10)
+    .then((hash) => User.create({
+      email: req.body.email,
+      password: hash, // записываем хеш в базу
+      name: req.body.name,
+      avatar: req.body.avatar,
+      about: req.body.about,
+    }))
+    .then((user) => res.status(200).send(user))
+    .catch((err) => {
+      if (err.name === 'ValidationError') {
+        res.status(400).send({ message: 'данные не прошли валидацию' });
+      } else {
+        res.status(500).send({ message: 'Произошла ошибка' });
+      }
+    });
+};
 
 const updateAvatar = (req, res) => User.findByIdAndUpdate(
   req.user.id,
@@ -68,16 +125,8 @@ const getUser = (req, res) => {
     });
 };
 
-const createUser = (req, res) => User.create(req.body).then((user) => res.status(200).send(user))
-  .catch((err) => {
-    if (err.name === 'ValidationError') {
-      res.status(400).send({ message: 'данные не прошли валидацию' });
-    } else {
-      res.status(500).send({ message: 'Произошла ошибка' });
-    }
-  });
-
 module.exports = {
+  login,
   getAllUsers,
   getUser,
   createUser,

@@ -1,3 +1,4 @@
+/* eslint-disable no-lonely-if */
 /* eslint-disable linebreak-style */
 const Card = require('../models/card');
 
@@ -6,10 +7,16 @@ const getAllCards = (req, res) => Card.find({}).then((cards) => res.status(200).
 
 const deleteCard = (req, res) => Card.findByIdAndRemove(req.params.id)
   .then((card) => {
+    const owner = req.user;
+
     if (!card) {
       res.status(404).send({ message: 'Данные не найдены' });
     } else {
-      res.status(200).send(card);
+      if (owner._id !== card.owner.toString()) {
+        res.status(403).send({ message: 'Недостаточно прав' });
+      } else {
+        res.status(200).send(card);
+      }
     }
   })
   .catch((err) => {
@@ -22,7 +29,7 @@ const deleteCard = (req, res) => Card.findByIdAndRemove(req.params.id)
 
 const createCard = (req, res) => {
   const { name, link } = req.body;
-  const owner = req.user.id;
+  const owner = req.user;
 
   return Card.create({ name, link, owner })
     .then((card) => res.status(200).send(card))
