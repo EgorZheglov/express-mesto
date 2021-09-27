@@ -1,19 +1,24 @@
 /* eslint-disable no-lonely-if */
 /* eslint-disable linebreak-style */
+const BadRequestError = require('../utils/BadRequestError');
+const AuthorizationError = require('../utils/AuthorizationError');
+const NotFoundError = require('../utils/NotFoundError');
+const ForbiddenError = require('../utils/ForbiddenError');
+
 const Card = require('../models/card');
 
-const getAllCards = (req, res) => Card.find({}).then((cards) => res.status(200).send(cards))
-  .catch(() => res.status(500).send({ message: 'Произошла ошибка' }));
+const getAllCards = (req, res, next) => Card.find({}).then((cards) => res.status(200).send(cards))
+  .catch(() => next());
 
-const deleteCard = (req, res) => Card.findByIdAndRemove(req.params.id)
+const deleteCard = (req, res, next) => Card.findByIdAndRemove(req.params.id)
   .then((card) => {
     const owner = req.user;
 
     if (!card) {
-      res.status(404).send({ message: 'Данные не найдены' });
+      next(new NotFoundError('Данные не найдены'));
     } else {
       if (owner._id !== card.owner.toString()) {
-        res.status(403).send({ message: 'Недостаточно прав' });
+        next(new ForbiddenError('Недостаточно прав'));
       } else {
         res.status(200).send(card);
       }
@@ -21,13 +26,13 @@ const deleteCard = (req, res) => Card.findByIdAndRemove(req.params.id)
   })
   .catch((err) => {
     if (err.name === 'CastError') {
-      res.status(400).send({ message: 'Введены некорректные данные' });
+      next(new BadRequestError('Введены неправильные данные'));
     } else {
-      res.status(500).send({ message: 'Произошла ошибка' });
+      next();
     }
   });
 
-const createCard = (req, res) => {
+const createCard = (req, res, next) => {
   const { name, link } = req.body;
   const owner = req.user;
 
@@ -35,14 +40,14 @@ const createCard = (req, res) => {
     .then((card) => res.status(200).send(card))
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        res.status(400).send({ message: 'данные не прошли валидацию' });
+        next(new BadRequestError('данные не прошли валидацию'));
       } else {
-        res.status(500).send({ message: 'Произошла ошибка' });
+        next();
       }
     });
 };
 
-const likeCard = (req, res) => Card.findByIdAndUpdate(
+const likeCard = (req, res, next) => Card.findByIdAndUpdate(
   req.params.cardId,
   { $addToSet: { likes: req.user.id } }, // добавить _id в массив, если его там нет
   {
@@ -51,20 +56,20 @@ const likeCard = (req, res) => Card.findByIdAndUpdate(
   },
 ).then((card) => {
   if (!card) {
-    res.status(404).send({ message: 'Данные не найдены' });
+    next(new NotFoundError('Данные не найдены'));
   } else {
     res.status(200).send(card);
   }
 })
   .catch((err) => {
     if (err.name === 'CastError') {
-      res.status(400).send({ message: 'Введены некорректные данные' });
+      next(new BadRequestError('Введены неправильные данные'));
     } else {
-      res.status(500).send({ message: 'Произошла ошибка' });
+      next();
     }
   });
 
-const dislikeCard = (req, res) => Card.findByIdAndUpdate(
+const dislikeCard = (req, res, next) => Card.findByIdAndUpdate(
   req.params.cardId,
   { $pull: { likes: req.user.id } }, // убрать _id из массива
   {
@@ -73,15 +78,15 @@ const dislikeCard = (req, res) => Card.findByIdAndUpdate(
   },
 ).then((card) => {
   if (!card) {
-    res.status(404).send({ message: 'Данные не найдены' });
+    next(new NotFoundError('Данные не найдены'));
   } else {
     res.status(200).send(card);
   }
 }).catch((err) => {
   if (err.name === 'CastError') {
-    res.status(400).send({ message: 'Введены некорректные данные' });
+    next(new BadRequestError('Введены неправильные данные'));
   } else {
-    res.status(500).send({ message: 'Произошла ошибка' });
+    next();
   }
 });
 

@@ -1,26 +1,28 @@
 /* eslint-disable linebreak-style */
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const BadRequestError = require('../utils/BadRequestError');
+const AuthorizationError = require('../utils/AuthorizationError');
+const NotFoundError = require('../utils/NotFoundError');
+const AlreadyRegistredError = require('../utils/AlreadyRegistredError');
 
 const User = require('../models/user');
 
-const login = (req, res) => {
+const login = (req, res, next) => {
   const { email, password } = req.body;
 
-  console.log(req.body);
   User.findOne({ email }).select('+password')
     .then((user) => {
       if (!user) {
-        return Promise.reject(new Error('Неправильные почта или пароль'));
+        return next(new AuthorizationError('Неправильные почта или пароль'));
       }
 
       return bcrypt.compare(password, user.password)
         .then((matched) => {
           if (!matched) {
             // хеши не совпали — отклоняем промис
-            return Promise.reject(new Error('Неправильные почта или пароль'));
+            return next(new AuthorizationError('Неправильные почта или пароль'));
           }
-
           const token = jwt.sign(
             { _id: user.id },
             'secret',
@@ -30,16 +32,12 @@ const login = (req, res) => {
           // аутентификация успешна
           return res.status(200).send({ token });
         })
-        .catch((err) => {
-          res
-            .status(401)
-            .send({ message: err.message });
-        });
+        .catch(() => next());
       // Захешируем его и сравним с хешем в базе. bcrypt.compare - асинхронный.
     });
 };
 
-const createUser = (req, res) => {
+const createUser = (req, res, next) => {
   bcrypt.hash(req.body.password, 10)
     .then((hash) => User.create({
       email: req.body.email,
@@ -50,15 +48,42 @@ const createUser = (req, res) => {
     }))
     .then((user) => res.status(200).send(user))
     .catch((err) => {
+      if (err.code === 11000) {
+        next(new AlreadyRegistredError('Пользователь с таким email уже есть'));
+      }
+
       if (err.name === 'ValidationError') {
-        res.status(400).send({ message: 'данные не прошли валидацию' });
+        next(new BadRequestError('данные не прошли валидацию'));
       } else {
-        res.status(500).send({ message: 'Произошла ошибка' });
+        next();
       }
     });
 };
 
-const updateAvatar = (req, res) => User.findByIdAndUpdate(
+const updateAvatar = (req, res, next) => User.findByIdAndUpdate(
+  req.user._id,
+  { ...req.body },
+  {
+    new: true,
+    runValidators: true,
+  },
+).then((user) => {
+  console.log(req.user);
+  if (!user) {
+    next(new NotFoundError('Данные не найдены'));
+  } else {
+    res.status(200).send(user);
+  }
+})
+  .catch((err) => {
+    if (err.name === 'ValidationError') {
+      next(new BadRequestError('данные не прошли валидацию'));
+    } else {
+      next();
+    }
+  });
+
+const updateUser = (req, res, next) => User.findByIdAndUpdate(
   req.user.id,
   { ...req.body },
   {
@@ -67,62 +92,54 @@ const updateAvatar = (req, res) => User.findByIdAndUpdate(
   },
 ).then((user) => {
   if (!user) {
-    res.status(404).send({ message: 'Данные не найдены' });
+    next(new NotFoundError('Данные не найдены'));
   } else {
     res.status(200).send(user);
   }
 })
   .catch((err) => {
     if (err.name === 'ValidationError') {
-      res.status(400).send({ message: 'данные не прошли валидацию' });
+      next(new BadRequestError('данные не прошли валидацию'));
     } else {
-      res.status(500).send({ message: 'Произошла ошибка' });
+      next();
     }
   });
 
-const updateUser = (req, res) => User.findByIdAndUpdate(
-  req.user.id,
-  { ...req.body },
-  {
-    new: true,
-    runValidators: true,
-  },
-).then((user) => {
-  if (!user) {
-    res.status(404).send({ message: 'Данные не найдены' });
-  } else {
-    res.status(200).send(user);
-  }
-})
-  .catch((err) => {
-    if (err.name === 'ValidationError') {
-      res.status(400).send({ message: 'данные не прошли валидацию' });
-    } else {
-      res.status(500).send({ message: 'Произошла ошибка' });
-    }
-  });
+const getAllUsers = (req, res, next) => User.find({}).then((users) => res.status(200).send(users))
+  .catch(() => next());
 
-const getAllUsers = (req, res) => User.find({}).then((users) => res.status(200).send(users))
-  .catch(() => res.status(500).send({ message: 'Произошла ошибка' }));
-
-const getUser = (req, res) => {
+const getUser = (req, res, next) => {
   const { id } = req.params;
 
   return User.findById(id)
     .then((user) => {
       if (!user) {
-        res.status(404).send({ message: 'Данные не найдены' });
+        next(new NotFoundError('Данные не найдены'));
       } else {
         res.status(200).send(user);
       }
     })
     .catch((err) => {
       if (err.name === 'CastError') {
-        res.status(400).send({ message: 'Введены некорректные данные' });
+        next(new BadRequestError('Введены неправильные данные'));
       } else {
-        res.status(500).send({ message: 'Произошла ошибка' });
+        next();
       }
     });
+};
+
+const getAuthUser = (req, res, next) => {
+  const id = req.user;
+
+  return User.findById(id)
+    .then((user) => {
+      if (!user) {
+        next(new NotFoundError('Данные не найдены'));
+      } else {
+        res.status(200).send(user);
+      }
+    })
+    .catch(() => next());
 };
 
 module.exports = {
@@ -132,4 +149,5 @@ module.exports = {
   createUser,
   updateAvatar,
   updateUser,
+  getAuthUser,
 };
