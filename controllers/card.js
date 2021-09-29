@@ -1,16 +1,15 @@
 /* eslint-disable no-lonely-if */
 /* eslint-disable linebreak-style */
 const BadRequestError = require('../utils/BadRequestError');
-const AuthorizationError = require('../utils/AuthorizationError');
 const NotFoundError = require('../utils/NotFoundError');
-const ForbiddenError = require('../utils/ForbiddenError');
+const ForbiddenError = require('../utils/ForBiddenError');
 
 const Card = require('../models/card');
 
 const getAllCards = (req, res, next) => Card.find({}).then((cards) => res.status(200).send(cards))
-  .catch(() => next());
+  .catch((err) => next(err));
 
-const deleteCard = (req, res, next) => Card.findByIdAndRemove(req.params.id)
+const deleteCard = (req, res, next) => Card.findById(req.params.id)
   .then((card) => {
     const owner = req.user;
 
@@ -20,7 +19,8 @@ const deleteCard = (req, res, next) => Card.findByIdAndRemove(req.params.id)
       if (owner._id !== card.owner.toString()) {
         next(new ForbiddenError('Недостаточно прав'));
       } else {
-        res.status(200).send(card);
+        Card.deleteOne(card)
+          .then(() => res.status(200).send(card));
       }
     }
   })
@@ -28,7 +28,7 @@ const deleteCard = (req, res, next) => Card.findByIdAndRemove(req.params.id)
     if (err.name === 'CastError') {
       next(new BadRequestError('Введены неправильные данные'));
     } else {
-      next();
+      next(err);
     }
   });
 
@@ -42,7 +42,7 @@ const createCard = (req, res, next) => {
       if (err.name === 'ValidationError') {
         next(new BadRequestError('данные не прошли валидацию'));
       } else {
-        next();
+        next(err);
       }
     });
 };
@@ -65,7 +65,7 @@ const likeCard = (req, res, next) => Card.findByIdAndUpdate(
     if (err.name === 'CastError') {
       next(new BadRequestError('Введены неправильные данные'));
     } else {
-      next();
+      next(err);
     }
   });
 
@@ -86,7 +86,7 @@ const dislikeCard = (req, res, next) => Card.findByIdAndUpdate(
   if (err.name === 'CastError') {
     next(new BadRequestError('Введены неправильные данные'));
   } else {
-    next();
+    next(err);
   }
 });
 

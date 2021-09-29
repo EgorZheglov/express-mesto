@@ -1,4 +1,5 @@
 /* eslint-disable linebreak-style */
+const validator = require('validator');
 
 const mongoose = require('mongoose');
 
@@ -12,6 +13,12 @@ const cardSchema = mongoose.Schema({
   link: {
     type: String,
     required: true,
+    validate: {
+      validator(link) {
+        return validator.isURL(link);
+      },
+      message: 'Некорректная ссылка',
+    },
   },
   owner: {
     type: mongoose.Schema.Types.ObjectId,

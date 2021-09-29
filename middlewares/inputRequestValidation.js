@@ -6,24 +6,30 @@ const { celebrate, Joi } = require('celebrate');
 // email и link валидируются непосредственно в схеме
 const validateUsersPost = celebrate({
   body: Joi.object().keys({
-    email: Joi.string().required(),
+    email: Joi.string().required().email(),
     password: Joi.string().required(),
-    name: Joi.string().required().min(2).max(30),
+    name: Joi.string().min(2).max(30),
     about: Joi.string().min(2).max(30),
-    avatar: Joi.string(),
+    avatar: Joi.string().pattern(/https?:\/\/w*\.?\w+\.\w+/),
   })
 });
 
 const validateCardPost = celebrate({
   body: Joi.object().keys({
-    link: Joi.string().required(),
+    link: Joi.string().pattern(/https?:\/\/w*\.?\w+\.\w+/).required(),
     name: Joi.string().required().min(2).max(30),
   })
 });
 
 const validateUpdateAvatar = celebrate({
   body: Joi.object().keys({
-    avatar: Joi.string().required(),
+    avatar: Joi.string().required().pattern(/https?:\/\/w*\.?\w+\.\w+/),
+  }),
+});
+
+const validateParams = celebrate({
+  params: Joi.object().keys({
+    id: Joi.string().length(24).hex(),
   }),
 });
 
@@ -37,12 +43,12 @@ const validateUserLogin = celebrate({
 const validateUpdateUser = celebrate({
   body: Joi.object().keys({
     name: Joi.string().required().min(2).max(30),
-    about: Joi.string().min(2).max(30),
-    avatar: Joi.string(),
+    about: Joi.string().required().min(2).max(30),
   }),
 });
 
 module.exports = {
+  validateParams,
   validateUsersPost,
   validateCardPost,
   validateUpdateAvatar,

@@ -32,7 +32,7 @@ const login = (req, res, next) => {
           // аутентификация успешна
           return res.status(200).send({ token });
         })
-        .catch(() => next());
+        .catch((err) => next(err));
       // Захешируем его и сравним с хешем в базе. bcrypt.compare - асинхронный.
     });
 };
@@ -46,7 +46,12 @@ const createUser = (req, res, next) => {
       avatar: req.body.avatar,
       about: req.body.about,
     }))
-    .then((user) => res.status(200).send(user))
+    .then((user) => res.status(200).send({
+      name: user.name,
+      about: user.about,
+      avatar: user.avatar,
+      email: user.email,
+    }))
     .catch((err) => {
       if (err.code === 11000) {
         next(new AlreadyRegistredError('Пользователь с таким email уже есть'));
@@ -55,7 +60,7 @@ const createUser = (req, res, next) => {
       if (err.name === 'ValidationError') {
         next(new BadRequestError('данные не прошли валидацию'));
       } else {
-        next();
+        next(err);
       }
     });
 };
@@ -68,18 +73,21 @@ const updateAvatar = (req, res, next) => User.findByIdAndUpdate(
     runValidators: true,
   },
 ).then((user) => {
-  console.log(req.user);
   if (!user) {
     next(new NotFoundError('Данные не найдены'));
   } else {
-    res.status(200).send(user);
+    res.status(200).send({
+      name: user.name,
+      avatar: user.avatar,
+      email: user.email,
+    });
   }
 })
   .catch((err) => {
     if (err.name === 'ValidationError') {
       next(new BadRequestError('данные не прошли валидацию'));
     } else {
-      next();
+      next(err);
     }
   });
 
@@ -94,19 +102,24 @@ const updateUser = (req, res, next) => User.findByIdAndUpdate(
   if (!user) {
     next(new NotFoundError('Данные не найдены'));
   } else {
-    res.status(200).send(user);
+    res.status(200).send({
+      name: user.name,
+      about: user.about,
+      avatar: user.avatar,
+      email: user.email,
+    });
   }
 })
   .catch((err) => {
     if (err.name === 'ValidationError') {
       next(new BadRequestError('данные не прошли валидацию'));
     } else {
-      next();
+      next(err);
     }
   });
 
 const getAllUsers = (req, res, next) => User.find({}).then((users) => res.status(200).send(users))
-  .catch(() => next());
+  .catch((err) => next(err));
 
 const getUser = (req, res, next) => {
   const { id } = req.params;
@@ -123,7 +136,7 @@ const getUser = (req, res, next) => {
       if (err.name === 'CastError') {
         next(new BadRequestError('Введены неправильные данные'));
       } else {
-        next();
+        next(err);
       }
     });
 };
@@ -139,7 +152,7 @@ const getAuthUser = (req, res, next) => {
         res.status(200).send(user);
       }
     })
-    .catch(() => next());
+    .catch((err) => next(err));
 };
 
 module.exports = {

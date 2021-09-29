@@ -4,15 +4,16 @@ const AuthorizationError = require('../utils/AuthorizationError');
 
 module.exports = (req, res, next) => {
   const token = req.headers.authorization;
+  // Т.е в Postman в заголовках авторизации я всегда должен был писать Bearer?
 
-  if (!token) {
+  if (!token || !token.startsWith('Bearer ')) {
     return next(new AuthorizationError('Необходима авторизация'));
   }
 
   let payload;
 
   try {
-    payload = jwt.verify(token, 'secret');
+    payload = jwt.verify(token.replace('Bearer ', ''), 'secret');
   } catch (err) {
     return next(new AuthorizationError('Необходима авторизация'));
   }
